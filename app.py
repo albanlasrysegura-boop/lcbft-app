@@ -1,5 +1,6 @@
 """Application LCB-FT : Vigilance client complète."""
 
+import os
 import streamlit as st
 import pandas as pd
 from io import BytesIO
@@ -11,6 +12,7 @@ from opensanctions import rechercher_opensanctions, rechercher_ppe, rechercher_s
 from gafi import verifier_pays_gafi, get_listes_gafi, LISTE_NOIRE, LISTE_GRISE
 from entreprises import rechercher_entreprise, rechercher_beneficiaires_effectifs
 from recherche_web import rechercher_google, analyser_risque_web
+from capture_web import capturer_recherche_google, capturer_multiple, generer_pdf_complet
 
 # --- Configuration page ---
 st.set_page_config(
@@ -299,6 +301,24 @@ with tab_personne:
                     with st.expander("Détails recherche web"):
                         st.dataframe(pd.DataFrame(res_web), use_container_width=True)
 
+                # Bouton capture d'écran Google → PDF
+                if st.button("Capturer la recherche Google en PDF",
+                             key="btn_capture_personne"):
+                    with st.spinner("Capture en cours (ouverture navigateur)..."):
+                        cap = capturer_recherche_google(nom_personne)
+                        if "erreur" in cap:
+                            st.error(cap["erreur"])
+                        else:
+                            st.image(cap["screenshot"],
+                                     caption="Capture Google", use_container_width=True)
+                            with open(cap["pdf"], "rb") as f:
+                                st.download_button(
+                                    label="Telecharger le PDF de la capture",
+                                    data=f.read(),
+                                    file_name=os.path.basename(cap["pdf"]),
+                                    mime="application/pdf",
+                                )
+
             # --- SYNTHÈSE ---
             st.markdown("---")
             st.subheader("Synthèse de vigilance")
@@ -475,6 +495,25 @@ with tab_entreprise:
                     st.markdown(
                         '<div class="ok-box">✅ Aucun résultat BODACC</div>',
                         unsafe_allow_html=True)
+
+            # --- Capture web entreprise ---
+            if src_web:
+                if st.button("Capturer la recherche Google en PDF",
+                             key="btn_capture_entreprise"):
+                    with st.spinner("Capture en cours..."):
+                        cap = capturer_recherche_google(nom_entreprise)
+                        if "erreur" in cap:
+                            st.error(cap["erreur"])
+                        else:
+                            st.image(cap["screenshot"],
+                                     caption="Capture Google", use_container_width=True)
+                            with open(cap["pdf"], "rb") as f:
+                                st.download_button(
+                                    label="Telecharger le PDF de la capture",
+                                    data=f.read(),
+                                    file_name=os.path.basename(cap["pdf"]),
+                                    mime="application/pdf",
+                                )
 
     elif btn_entreprise:
         st.warning("Veuillez saisir un nom d'entreprise ou un SIREN.")
